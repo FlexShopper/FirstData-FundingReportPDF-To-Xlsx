@@ -57,13 +57,6 @@ processor.on('complete', function(data) {
         }
     }
 
-    if (data.noMatches.length > 0) {
-        var noMatchesSheet = workbook.createSheet('No Matches', 1, data.noMatches.length);
-        for (i = 0; i < data.noMatches.length; i++) {
-            noMatchesSheet.set(1, i+1, data.noMatches[i]);
-        }
-    }
-
     if (data.reversals.length > 0) {
         var reversalsSheet = workbook.createSheet('Transactions', 4, data.reversals.length + 1);
         reversalsSheet.set(1, 1, 'First Name');
@@ -80,12 +73,24 @@ processor.on('complete', function(data) {
         }
     }
 
-    workbook.save(function(ok) {
-        if (ok || ok === null) {
-            console.log('File saved successfully');
-        } else {
-            workbook.cancel();
-            console.log('Failure saving file');
+    data.getNoMatches(function(noMatches) {
+        var noMatchesSheet = workbook.createSheet('No Matches', 10, noMatches.length);
+        for (i = 0; i < noMatches.length; i++) {
+            var nLine = noMatches[i];
+            var n = 0;
+            for (e in nLine) {
+                noMatchesSheet.set(n+1, i+1, nLine[e]);
+                n++;
+            }
         }
+
+        workbook.save(function(ok) {
+            if (ok || ok === null) {
+                console.log('File saved successfully');
+            } else {
+                workbook.cancel();
+                console.log('Failure saving file');
+            }
+        });
     });
 });

@@ -3,6 +3,7 @@
     "yargs": "3.4.*",
     "pdf-extract": "1.0.*",
     "msexcel-builder": "0.0.2",
+    "async": "0.9.*",
     "eyes": "0.1.*"
   }
 }

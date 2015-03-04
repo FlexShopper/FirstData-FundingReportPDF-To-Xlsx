@@ -1,4 +1,5 @@
 (function(exports) {
+    var async = require('async');
     var parser = function(data) {
         this._data = data;
     };
@@ -61,9 +62,90 @@
         };
     };
 
+    var parseNoMatch = function(noMatchLine, callback) {
+        noMatchChunks = noMatchLine.split('  ').filter(function(piece) {
+            return piece != '';
+        });
+
+        returnStructure = {
+            date: null,
+            traceNumber: null,
+            checkDate: null,
+            procDate: null,
+            firstName: null,
+            lastName: null,
+            merchantRefNumber: null,
+            creditAmount: null,
+            checkNumber: null,
+            storeNumber: null
+        };
+
+        var merchantRefNumber = null;
+        for (i = 0; i < noMatchChunks.length; i++) {
+            chunk = noMatchChunks[i].trim();
+            // The date
+            if (chunk.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/)) {
+                // Multiple dates but they always come in the same order
+                if (returnStructure.date == null && i == 0) {
+                    returnStructure.date = chunk;
+                } else if (returnStructure.checkDate == null) {
+                    returnStructure.checkDate = chunk;
+                } else if (returnStructure.procDate == null) {
+                    returnStructure.procDate = chunk;
+                    // If we're at the procDate, the next column is store #...
+                    i++;
+                    returnStructure.storeNumber = noMatchChunks[i];
+
+                }
+
+            // Situations where the trace # and reference
+            } else if (chunk.match(/\d{22}\s\d+/)) {
+                refChunks = chunk.trim().split(' ');
+                returnStructure.traceNumber = refChunks[0];
+                i++;
+                returnStructure.merchantRefNumber = refChunks[1] + ' ' + noMatchChunks[i];
+                i++;
+                returnStructure.checkNumber = noMatchChunks[i];
+
+            // Situations where the trace numer has been traced by itself
+            } else if (chunk.match(/\d{22}/)) {
+                returnStructure.traceNumber = chunk;
+            // Detecting name
+            } else if (chunk.indexOf('CW: ') > -1) {
+                nameChunks = chunk.split(' ').slice(1);
+                returnStructure.lastName = nameChunks[0];
+                returnStructure.firstName = nameChunks.splice(1).reverse().join(' ');
+
+            // Here we're mostly likely dealing with the merchant ref Number
+            // and the next one is the check # so we grab it here as well
+            } else if (chunk.match(/\d+/)) {
+                if (merchantRefNumber == null) {
+                    i++;
+                    merchantRefNumber = chunk + ' ' + noMatchChunks[i];
+                    returnStructure.merchantRefNumber = merchantRefNumber;
+
+                    i++;
+                    returnStructure.checkNumber = noMatchChunks[i];
+                }
+
+            // Get the amount that this was for
+            } else if (chunk.indexOf('$') >= -1) {
+                returnStructure.creditAmount = chunk;
+            }
+        }
+
+        callback(null, returnStructure);
+    };
+
+    var getNoMatches = function(noMatches, cb) {
+        async.map(noMatches, parseNoMatch, function(err, results) {
+            cb(results);
+        });
+    };
+
     /**
      *
-     * @returns {{reversals: Array, noMatches: Array, openSales: Array}}
+     * @returns {{reversals: Array, noMatches: Array, openSales: Array, getNoMatches: Function}}
      */
     parser.prototype.parse = function() {
         // Let's gather the day into lines we can worth with
@@ -71,7 +153,10 @@
         var dataPackage = {
             reversals: [],
             noMatches: [],
-            openSales: []
+            openSales: [],
+            getNoMatches: function(cb) {
+                return getNoMatches(this.noMatches, cb)
+            }
         };
 
         dataToScan = this._data;
@@ -123,7 +208,7 @@
             refIdMatches = chunk[0].match(/\s5\w{11}/);
             refId = null;
             if (refIdMatches == null) {
-                dataPackage.noMatches.push(chunk.join(' '));
+                    dataPackage.noMatches.push(chunk.join(' '));
                 continue;
             } else {
                 refId = refIdMatches[0].toString().trim();
