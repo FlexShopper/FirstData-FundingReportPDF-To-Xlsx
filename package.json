@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "yargs": "3.4.*",
+    "pdf-extract": "1.0.*",
+    "fast-csv": "0.5.*",
+    "eyes": "0.1.*"
+  }
+}
