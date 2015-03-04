@@ -2,7 +2,7 @@
   "dependencies": {
     "yargs": "3.4.*",
     "pdf-extract": "1.0.*",
-    "fast-csv": "0.5.*",
+    "msexcel-builder": "0.0.2",
     "eyes": "0.1.*"
   }
 }
